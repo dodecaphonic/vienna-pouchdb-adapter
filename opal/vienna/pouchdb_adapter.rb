@@ -43,44 +43,53 @@ module Vienna
 
     def create_record(record, &block)
       data = prepare_data(record)
-      promise = if record.id
-                  database.put(data.merge(_id: record.id))
-                else
-                  database.post(data)
-                end
+      action = if record.id
+                 database.put(data.merge(_id: record.id))
+               else
+                 database.post(data)
+               end
 
-      promise.then do |attributes|
-        record.load(data.merge(id: attributes[:id], _vienna_pouchdb: {
-                                 _id: attributes[:id],
-                                 _rev: attributes[:rev],
-                                 rbtype: record.class.to_s
-                               }))
-
-        record.did_update
-        record.class.trigger :change, record.class.all
-
-        block.call(record) if block
-      end.fail do |error|
-        record.trigger :pouchdb_error, error.message
+      strategy = ->(r, created) do
+        r.load(data.merge(id: created[:id], _vienna_pouchdb: {
+                            _id: created[:id],
+                            _rev: created[:rev],
+                            rbtype: record.class.to_s
+                          }))
       end
+
+      perform(action,
+              record: record,
+              trigger_event: :did_update,
+              callback: block,
+              update_strategy: strategy)
     end
 
     def update_record(record, &block)
-      data = prepare_data(record)
+      data     = prepare_data(record)
+      strategy = ->(r, updated) do
+        r.load(data.merge(_vienna_pouchdb: { _rev: updated[:rev] }))
+      end
 
-      database.put(data).then do |updated|
-        record.load(data.merge(_vienna_pouchdb: { _rev: updated[:rev] }))
+      perform(database.put(data),
+              record: record,
+              trigger_event: :did_update,
+              callback: block,
+              update_strategy: strategy)
+    end
 
-        record.did_update
+    private
+
+    def perform(promise, trigger_event:, record:, callback: nil,
+                update_strategy: nil)
+      promise.then do |changed|
+        update_strategy.call(record, changed) if update_strategy
+        record.public_send(trigger_event)
         record.class.trigger :change, record.class.all
-
-        block.call(record) if block
+        callback.call(record) if callback
       end.fail do |error|
         record.trigger :pouchdb_error, error.message
       end
     end
-
-    private
 
     def prepare_data(record)
       data = record.as_json
