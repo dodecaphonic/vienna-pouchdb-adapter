@@ -84,6 +84,21 @@ module Vienna
               callback: block)
     end
 
+    def fetch(model, options = {}, &block)
+      database.all_docs(include_docs: true).then do |docs|
+        klass   = model.to_s
+        records = docs
+                  .select { |d| d.document[:rbtype] == klass }
+                  .map { |d| model.load(adapt_attributes(d.document)) }
+
+        model.trigger :refresh, model.all
+
+        block.call(records) if block
+      end.fail do |error|
+        model.trigger :pouchdb_error, error.message
+      end
+    end
+
     private
 
     def perform(promise, trigger_event:, record:, callback: nil,
@@ -114,13 +129,14 @@ module Vienna
       self.class.database
     end
 
-    def update_model(model, attributes)
+    def adapt_attributes(attributes)
       actual_attrs  = attributes.reject { |k, _| SPECIAL_ATTRIBUTES.member?(k) }
       special_attrs = attributes.select { |k, _| SPECIAL_ATTRIBUTES.member?(k) }
-      final_attrs   = actual_attrs.merge(_vienna_pouchdb: special_attrs,
-                                         id: special_attrs[:_id])
+      actual_attrs.merge(_vienna_pouchdb: special_attrs, id: special_attrs[:_id])
+    end
 
-      model.load(final_attrs)
+    def update_model(model, attributes)
+      model.load(adapt_attributes(attributes))
 
       model
     end

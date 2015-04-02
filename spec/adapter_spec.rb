@@ -6,6 +6,12 @@ class Widget < Vienna::Model
   attributes :name, :part_number
 end
 
+class Violet < Vienna::Model
+  adapter Vienna::PouchDBAdapter
+
+  attributes :owner
+end
+
 describe Vienna::PouchDBAdapter do
   before do
     Vienna::PouchDBAdapter.configure do |c|
@@ -14,6 +20,10 @@ describe Vienna::PouchDBAdapter do
   end
 
   after do
+    ev =  Widget.instance_variable_get("@eventable")
+    ev[:refresh] = []
+    ev[:pouchdb_error] = []
+
     db.destroy()
   end
 
@@ -138,6 +148,33 @@ describe Vienna::PouchDBAdapter do
             end
           end
         end
+      end
+    end
+  end
+
+  describe "fetching collections" do
+    async "only includes documents of the Model's type" do
+      Violet.new(owner: "Jessica").save do
+        Widget.new(raw_doc).save do
+          Widget.fetch do |ws|
+            async do
+              expect(ws.size).to eq(1)
+              expect(ws.all? { |w| w.class == Widget }).to be(true)
+            end
+          end
+        end
+      end
+    end
+
+    async "triggers refresh event" do
+      Widget.new(raw_doc).save do
+        Widget.on :refresh do |d|
+          async do
+            expect(true).to be(true)
+          end
+        end
+
+        Widget.fetch
       end
     end
   end
