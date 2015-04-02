@@ -42,7 +42,7 @@ module Vienna
     end
 
     def create_record(record, &block)
-      data = record.as_json.merge(rbtype: record.class.to_s)
+      data = prepare_data(record)
       promise = if record.id
                   database.put(data.merge(_id: record.id))
                 else
@@ -65,7 +65,34 @@ module Vienna
       end
     end
 
+    def update_record(record, &block)
+      data = prepare_data(record)
+
+      database.put(data).then do |updated|
+        record.load(data.merge(_vienna_pouchdb: { _rev: updated[:rev] }))
+
+        record.did_update
+        record.class.trigger :change, record.class.all
+
+        block.call(record) if block
+      end.fail do |error|
+        record.trigger :pouchdb_error, error.message
+      end
+    end
+
     private
+
+    def prepare_data(record)
+      data = record.as_json
+             .merge(rbtype: record.class.to_s)
+             .reject { |k, _| k == :id }
+
+      if (pouch_data = record[:_vienna_pouchdb])
+        data.merge(pouch_data)
+      else
+        data
+      end
+    end
 
     def database
       self.class.database

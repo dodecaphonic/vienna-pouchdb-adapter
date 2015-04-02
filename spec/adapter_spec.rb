@@ -106,4 +106,24 @@ describe Vienna::PouchDBAdapter do
       end
     end
   end
+
+  describe "updating" do
+    async "changes data and the internal rev" do
+      w = Widget.new(raw_doc)
+
+      w.save do
+        w.name = "Magic Cog"
+        rev0 = w[:_vienna_pouchdb][:_rev]
+
+        w.save do |uw|
+          async do
+            rev1 = w[:_vienna_pouchdb][:_rev]
+            expect(uw.name).to eq("Magic Cog")
+            expect(uw).to be(w)
+            expect(rev1).not_to eq(rev0)
+          end
+        end
+      end
+    end
+  end
 end
