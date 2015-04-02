@@ -77,6 +77,13 @@ module Vienna
               update_strategy: strategy)
     end
 
+    def delete_record(record, &block)
+      perform(database.remove(doc: record[:_vienna_pouchdb]),
+              record: record,
+              trigger_event: :did_destroy,
+              callback: block)
+    end
+
     private
 
     def perform(promise, trigger_event:, record:, callback: nil,

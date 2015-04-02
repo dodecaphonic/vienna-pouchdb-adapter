@@ -106,7 +106,7 @@ describe Vienna::PouchDBAdapter do
     end
   end
 
-  describe "updating" do
+  describe "updating records" do
     async "changes data and the internal rev" do
       w = Widget.new(raw_doc)
 
@@ -120,6 +120,22 @@ describe Vienna::PouchDBAdapter do
             expect(uw.name).to eq("Magic Cog")
             expect(uw).to be(w)
             expect(rev1).not_to eq(rev0)
+          end
+        end
+      end
+    end
+  end
+
+  describe "deleting records" do
+    async "really removes them from the database" do
+      w = Widget.new(raw_doc.merge(_id: "widget-1"))
+
+      w.save do
+        w.destroy do
+          db.get("widget-1").fail do |e|
+            async do
+              expect(e.message).to match(/missing/)
+            end
           end
         end
       end
