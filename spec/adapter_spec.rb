@@ -58,7 +58,6 @@ describe Vienna::PouchDBAdapter do
 
       w.save do |cw|
         async do
-          $global.console.log cw
           expect(cw.id).not_to be_nil
           expect(cw).to be(w)
           expect(w.new_record?).to be(false)
