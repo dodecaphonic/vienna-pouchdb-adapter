@@ -21,8 +21,9 @@ describe Vienna::PouchDBAdapter do
 
   after do
     ev =  Widget.instance_variable_get("@eventable")
-    ev[:refresh] = []
-    ev[:pouchdb_error] = []
+    %i(refresh pouchdb_error :update).each do |e|
+      ev[e] = []
+    end
 
     db.destroy()
   end
@@ -131,6 +132,23 @@ describe Vienna::PouchDBAdapter do
             expect(uw).to be(w)
             expect(rev1).not_to eq(rev0)
           end
+        end
+      end
+    end
+
+    async "triggers the 'change' event" do
+      async "changes data and the internal rev" do
+        w = Widget.new(raw_doc)
+
+        w.on :change do
+          async do
+            expect(true).to be(true)
+          end
+        end
+
+        w.save do
+          w.name = "Magic Cog"
+          w.save
         end
       end
     end
