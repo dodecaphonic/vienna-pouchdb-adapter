@@ -34,10 +34,34 @@ module Vienna
           error_message = format_error(:wrong_type, id, model_type, expected_type)
           model.class.trigger :pouchdb_error, error_message
         else
-          block.call(update_model(model, attributes))
+          block.call(update_model(model, attributes)) if block
         end
       end.fail do |error|
         model.trigger :pouchdb_error, error.message
+      end
+    end
+
+    def create_record(record, &block)
+      data = record.as_json.merge(rbtype: record.class.to_s)
+      promise = if record.id
+                  database.put(data.merge(_id: record.id))
+                else
+                  database.post(data)
+                end
+
+      promise.then do |attributes|
+        record.load(data.merge(id: attributes[:id], _vienna_pouchdb: {
+                                 _id: attributes[:id],
+                                 _rev: attributes[:rev],
+                                 rbtype: record.class.to_s
+                               }))
+
+        record.did_update
+        record.class.trigger :change, record.class.all
+
+        block.call(record) if block
+      end.fail do |error|
+        record.trigger :pouchdb_error, error.message
       end
     end
 
@@ -61,7 +85,6 @@ module Vienna
     def format_error(error_type, *args)
       format(ERROR_MESSAGES[error_type], *args)
     end
-
 
     Configuration = Struct.new(:database_name)
   end
