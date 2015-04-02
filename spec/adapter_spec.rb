@@ -89,7 +89,7 @@ describe Vienna::PouchDBAdapter do
       end
     end
 
-    async "triggers the update event when created" do
+    async "triggers the 'update event' when created" do
       w = Widget.new(raw_doc)
 
       w.on :update do
@@ -101,7 +101,7 @@ describe Vienna::PouchDBAdapter do
       w.save
     end
 
-    async "triggers pouchdb_error if something goes wrong on the pouch size" do
+    async "triggers 'pouchdb_error' if something goes wrong on the pouch size" do
       w0 = Widget.new(raw_doc.merge(id: "widget-1"))
       w1 = Widget.new(raw_doc.merge(id: "widget-1"))
 
@@ -184,7 +184,7 @@ describe Vienna::PouchDBAdapter do
       end
     end
 
-    async "triggers refresh event" do
+    async "triggers 'refresh' event" do
       Widget.new(raw_doc).save do
         Widget.on :refresh do |d|
           async do
