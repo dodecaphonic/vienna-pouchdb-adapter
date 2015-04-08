@@ -1,5 +1,5 @@
 require "vienna"
-require "pouchdb"
+require "opal-pouchdb"
 
 module Vienna
   class PouchDBAdapter < Adapter

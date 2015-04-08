@@ -1,5 +1,6 @@
 require "opal"
 require "opal-vienna"
+require "opal-pouchdb"
 
 require "opal/vienna/pouchdb_adapter/version"
 
